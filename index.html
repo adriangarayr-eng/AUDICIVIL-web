@@ -3,232 +3,1184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AUDICIVIL - Gestión de Auditorio</title>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-storage-compat.js"></script>
-
+    <title>AUDICIVIL | Auditorio Ricardo Ramiro Santos Rodríguez</title>
+    
+    <!--
+    ═══════════════════════════════════════════════════════════════
+     INSTRUCCIONES DE CONFIGURACIÓN (LEER ANTES DE USAR)
+    ═══════════════════════════════════════════════════════════════
+     1. Reemplaza 'TU_IMGBB_API_KEY' con tu clave de API de ImgBB
+        (consíguela gratis en https://api.imgbb.com/)
+     2. Reemplaza 'TU_GOOGLE_APPS_SCRIPT_URL' con la URL de tu
+        Web App de Google Apps Script (debe estar publicada como
+        "Cualquiera, incluso anónimo" y aceptar POST/GET).
+     3. La Apps Script debe manejar los parámetros:
+        ?action=read  -> GET  -> devuelve JSON con todos los eventos
+        ?action=create -> POST -> recibe JSON con {titulo,imagen,fecha,horario,extra}
+        ?action=delete -> POST -> recibe JSON con {id}
+        (Los eventos se guardan en una hoja de Google Sheets con
+         columnas: id, titulo, imagen, fecha, horario, extra)
+    ═══════════════════════════════════════════════════════════════
+    -->
+    
     <style>
-        /* Estilo Cineplanet (Azul, Amarillo, Oscuro) */
         :root {
-            --fondo: #000814;
-            --azul-primario: #001d3d;
-            --azul-acento: #003566;
-            --dorado: #ffc300;
-            --texto: #e0e1dd;
+            --bg-dark: #0b0b0d;
+            --bg-card: #15161a;
+            --bg-surface: #1c1d23;
+            --bg-surface-hover: #24252d;
+            --red-cine: #c41e3a;
+            --red-hover: #e0243f;
+            --gold: #c9a84c;
+            --gold-light: #d4b55e;
+            --text-primary: #f0f0f0;
+            --text-secondary: #b0b0b5;
+            --text-muted: #7a7a80;
+            --border: #2a2b33;
+            --border-light: #353640;
+            --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.6);
+            --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
+            --shadow-btn: 0 4px 14px rgba(196, 30, 58, 0.4);
+            --radius-sm: 8px;
+            --radius: 12px;
+            --radius-lg: 16px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        body { 
-            font-family: 'Arial', sans-serif; 
-            background-color: var(--fondo); 
-            color: white; margin: 0; 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        header { 
-            background: var(--azul-primario); 
-            padding: 30px; 
-            text-align: center; 
-            border-bottom: 5px solid var(--dorado); 
+        html {
+            scroll-behavior: smooth;
         }
 
-        header h1 { color: var(--dorado); margin: 0; font-size: 2.5em; letter-spacing: 2px; }
-
-        nav { display: flex; justify-content: center; background: #00152b; padding: 10px; gap: 20px; }
-        nav button { 
-            background: transparent; border: none; color: white; cursor: pointer; 
-            font-weight: bold; padding: 10px 20px; text-transform: uppercase;
-        }
-        nav button.active { border-bottom: 3px solid var(--dorado); color: var(--dorado); }
-
-        .container { max-width: 1100px; margin: 30px auto; padding: 20px; }
-
-        /* Cartelera */
-        .cartelera-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
-        .movie-card { 
-            background: var(--azul-primario); border-radius: 10px; overflow: hidden; 
-            transition: 0.3s; border: 1px solid #003566;
-        }
-        .movie-card:hover { transform: translateY(-10px); box-shadow: 0 0 20px rgba(255,195,0,0.2); }
-        .movie-card img { width: 100%; height: 450px; object-fit: cover; }
-        .card-content { padding: 15px; }
-        .card-content h3 { margin: 0 0 10px; color: var(--dorado); text-transform: uppercase; }
-        .info-row { font-size: 0.9em; margin-bottom: 5px; color: #a2d2ff; }
-
-        /* Formulario */
-        .form-box { 
-            background: var(--azul-primario); padding: 30px; border-radius: 10px; 
-            max-width: 500px; margin: auto; display: none; 
-        }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: var(--dorado); }
-        input, textarea { 
-            width: 100%; padding: 10px; background: #000; border: 1px solid var(--azul-acento); 
-            color: white; border-radius: 5px; box-sizing: border-box;
-        }
-        .btn-send { 
-            background: var(--dorado); color: black; border: none; width: 100%; 
-            padding: 15px; font-weight: bold; cursor: pointer; margin-top: 10px;
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        #loading { text-align: center; display: none; color: var(--dorado); }
+        /* ========== HEADER ========== */
+        .header {
+            background: linear-gradient(180deg, #111115 0%, #0d0e12 100%);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .header-inner {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 68px;
+        }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .logo-icon {
+            width: 46px;
+            height: 46px;
+            background: linear-gradient(135deg, var(--red-cine), #a0182e);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(196, 30, 58, 0.35);
+            flex-shrink: 0;
+        }
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .logo-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #fff;
+            line-height: 1;
+            text-transform: uppercase;
+        }
+        .logo-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            line-height: 1;
+            margin-top: 2px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .nav-link {
+            padding: 9px 18px;
+            border-radius: 24px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            white-space: nowrap;
+        }
+        .nav-link:hover,
+        .nav-link.active {
+            color: #fff;
+            background: var(--bg-surface-hover);
+        }
+        .nav-link.btn-add {
+            background: var(--red-cine);
+            color: #fff;
+            font-weight: 600;
+            padding: 9px 20px;
+            box-shadow: var(--shadow-btn);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-link.btn-add:hover {
+            background: var(--red-hover);
+            box-shadow: 0 6px 22px rgba(224, 36, 63, 0.5);
+            transform: translateY(-1px);
+        }
+        .btn-add-icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        /* ========== HERO BANNER ========== */
+        .hero {
+            background: linear-gradient(160deg, #1a0a0f 0%, #0d0e12 30%, #0b0b0d 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 40px 24px 36px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -60%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(196, 30, 58, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(201, 168, 76, 0.15);
+            color: var(--gold-light);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            border: 1px solid rgba(201, 168, 76, 0.25);
+            position: relative;
+        }
+        .hero h1 {
+            font-size: 2.6rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #fff;
+            position: relative;
+            margin-bottom: 6px;
+        }
+        .hero h2 {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            position: relative;
+            margin-bottom: 4px;
+        }
+        .hero .university {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            position: relative;
+            font-style: italic;
+        }
+        .hero-accent {
+            color: var(--red-cine);
+        }
+
+        /* ========== MAIN CONTENT ========== */
+        .main-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 32px 24px 60px;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 28px;
+            background: var(--red-cine);
+            border-radius: 2px;
+            display: inline-block;
+        }
+        .filter-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-pill {
+            padding: 8px 18px;
+            border-radius: 24px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .filter-pill:hover {
+            border-color: #555;
+            color: #fff;
+        }
+        .filter-pill.active {
+            background: var(--red-cine);
+            border-color: var(--red-cine);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: var(--shadow-btn);
+        }
+
+        /* ========== EVENT GRID ========== */
+        .event-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 22px;
+        }
+        .event-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-card);
+        }
+        .event-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--border-light);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+        }
+        .event-card-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+        .event-card-image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #1a1b20 0%, #22232b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 3rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .event-card-body {
+            padding: 16px 18px 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .event-date-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            color: var(--gold-light);
+            font-weight: 600;
+            background: rgba(201, 168, 76, 0.08);
+            padding: 4px 10px;
+            border-radius: 12px;
+            width: fit-content;
+            white-space: nowrap;
+        }
+        .event-card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .event-card-time {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .event-card-extra {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+        }
+        .event-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 8px;
+        }
+        .btn-sm {
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            letter-spacing: 0.3px;
+        }
+        .btn-delete {
+            background: transparent;
+            color: #e05555;
+            border: 1px solid rgba(224, 85, 85, 0.3);
+        }
+        .btn-delete:hover {
+            background: rgba(224, 85, 85, 0.12);
+            border-color: #e05555;
+        }
+        .btn-detail {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+        .btn-detail:hover {
+            background: var(--bg-surface-hover);
+            color: #fff;
+            border-color: #555;
+        }
+
+        /* ========== EMPTY STATE ========== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon {
+            font-size: 5rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .empty-state p {
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+        .empty-state span {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* ========== MODAL ========== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 28px 30px;
+            width: 90%;
+            max-width: 580px;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            background: var(--bg-surface);
+            border: none;
+            color: #fff;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+        }
+        .modal-close:hover {
+            background: #333;
+            color: #fff;
+        }
+        .modal h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #fff;
+            letter-spacing: -0.3px;
+            padding-right: 30px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            letter-spacing: 0.2px;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 11px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: var(--transition);
+            resize: vertical;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--red-cine);
+            box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.12);
+        }
+        .form-group input[type="file"] {
+            padding: 9px;
+            background: var(--bg-surface);
+            border: 1px dashed var(--border-light);
+            cursor: pointer;
+        }
+        .form-group input[type="file"]::file-selector-button {
+            background: var(--bg-surface-hover);
+            border: 1px solid var(--border-light);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: #555;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 13px;
+            background: var(--red-cine);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: var(--transition);
+            margin-top: 8px;
+            box-shadow: var(--shadow-btn);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-submit:hover {
+            background: var(--red-hover);
+            box-shadow: 0 8px 24px rgba(224, 36, 63, 0.5);
+        }
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .image-preview {
+            width: 100%;
+            height: 140px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            margin-top: 8px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            display: none;
+        }
+        .image-preview.visible {
+            display: block;
+        }
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ========== DETAIL MODAL ========== */
+        .detail-modal-content {
+            text-align: left;
+        }
+        .detail-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: var(--radius);
+            margin-bottom: 18px;
+            border: 1px solid var(--border);
+        }
+        .detail-image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: var(--bg-surface);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+            border: 1px solid var(--border);
+        }
+        .detail-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .detail-meta-item {
+            background: var(--bg-surface);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .detail-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .detail-extra {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            font-size: 0.95rem;
+        }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 20px 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            background: var(--bg-dark);
+        }
+        .footer strong {
+            color: var(--text-secondary);
+        }
+
+        /* ========== TOAST ========== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #1e293b;
+            color: #fff;
+            padding: 14px 22px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.9rem;
+            z-index: 300;
+            box-shadow: var(--shadow-lg);
+            border-left: 4px solid #22c55e;
+            animation: slideInRight 0.3s ease, fadeOutRight 0.3s ease 2.5s forwards;
+        }
+        .toast.error {
+            border-left-color: #ef4444;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(120%); opacity: 0; }
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .header-inner {
+                flex-wrap: wrap;
+                height: auto;
+                padding: 10px 16px;
+                gap: 10px;
+                justify-content: center;
+            }
+            .logo-area {
+                gap: 8px;
+            }
+            .logo-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 17px;
+            }
+            .logo-title {
+                font-size: 1.1rem;
+                letter-spacing: 1px;
+            }
+            .logo-subtitle {
+                font-size: 0.65rem;
+            }
+            .nav-links {
+                gap: 4px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .nav-link {
+                padding: 7px 13px;
+                font-size: 0.78rem;
+            }
+            .hero h1 {
+                font-size: 1.6rem;
+            }
+            .hero h2 {
+                font-size: 0.85rem;
+            }
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .event-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 14px;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .modal {
+                padding: 20px 16px;
+                width: 95%;
+                max-width: 95%;
+            }
+            .toast {
+                right: 10px;
+                bottom: 20px;
+                left: 10px;
+                text-align: center;
+                font-size: 0.8rem;
+                padding: 12px 16px;
+            }
+        }
+        @media (max-width: 400px) {
+            .event-grid {
+                grid-template-columns: 1fr;
+            }
+            .hero h1 {
+                font-size: 1.3rem;
+            }
+        }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>AUDICIVIL</h1>
-    <p>Auditorio Ricardo Ramiro Santos Rodríguez - EPIC UNMSM</p>
-</header>
-
-<nav>
-    <button id="btn-view" class="active" onclick="showTab('view')">Cartelera</button>
-    <button id="btn-add" onclick="showTab('add')">Agregar Evento</button>
-</nav>
-
-<div class="container">
-    <div id="loading">Subiendo evento... espera un toque, neto...</div>
-
-    <div id="tab-view">
-        <h2 style="text-align: center; margin-bottom: 30px;">PRÓXIMOS ESTRENOS EN LA FACU</h2>
-        <div class="cartelera-grid" id="lista-eventos">
+    <!-- ==================== HEADER ==================== -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo-area">
+                <div class="logo-icon">A</div>
+                <div class="logo-text">
+                    <span class="logo-title">AUDICIVIL</span>
+                    <span class="logo-subtitle">Gestión de Auditorio</span>
+                </div>
             </div>
-    </div>
+            <nav class="nav-links">
+                <button class="nav-link active" onclick="filtrarEventos('todos')" id="nav-todos">Cartelera</button>
+                <button class="nav-link" onclick="filtrarEventos('hoy')" id="nav-hoy">Hoy</button>
+                <button class="nav-link" onclick="filtrarEventos('futuros')" id="nav-futuros">Próximos</button>
+                <button class="nav-link btn-add" onclick="abrirModalAgregar()">
+                    <span class="btn-add-icon">+</span> Nuevo Evento
+                </button>
+            </nav>
+        </div>
+    </header>
 
-    <div id="tab-add" class="form-box">
-        <h2 style="text-align: center; color: var(--dorado);">REGISTRAR EVENTO</h2>
-        <form id="event-form">
-            <div class="form-group">
-                <label>Título del Evento</label>
-                <input type="text" id="title" required placeholder="Ej: Seminario de Hidráulica">
+    <!-- ==================== HERO ==================== -->
+    <section class="hero">
+        <div class="hero-badge">🎭 Auditorio Universitario</div>
+        <h1>Ricardo Ramiro <span class="hero-accent">Santos Rodríguez</span></h1>
+        <h2>Escuela Profesional de Ingeniería Civil</h2>
+        <p class="university">Universidad Nacional Mayor de San Marcos</p>
+    </section>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="main-container">
+        <div class="section-header">
+            <h3 class="section-title" id="sectionTitle">Cartelera de Eventos</h3>
+            <div class="filter-pills">
+                <button class="filter-pill active" onclick="filtrarEventos('todos')" id="pill-todos">Todos</button>
+                <button class="filter-pill" onclick="filtrarEventos('hoy')" id="pill-hoy">📅 Hoy</button>
+                <button class="filter-pill" onclick="filtrarEventos('futuros')" id="pill-futuros">✨ Próximos</button>
             </div>
-            <div class="form-group">
-                <label>Imagen de Referencia (Archivo)</label>
-                <input type="file" id="image-file" accept="image/*" required>
-            </div>
-            <div class="form-group">
-                <label>Fecha</label>
-                <input type="date" id="date" required>
-            </div>
-            <div class="form-group">
-                <label>Horario</label>
-                <input type="time" id="time" required>
-            </div>
-            <div class="form-group">
-                <label>Información Extra</label>
-                <textarea id="extra" rows="3" placeholder="Ponentes, salón, etc."></textarea>
-            </div>
-            <button type="submit" class="btn-send">PUBLICAR EVENTO</button>
-        </form>
-    </div>
-</div>
+        </div>
+        <div class="event-grid" id="eventGrid">
+            <!-- Los eventos se renderizan dinámicamente -->
+        </div>
+    </main>
 
-<script>
-    // Configuración de Firebase (Neto, aquí pegas TUS llaves de Firebase)
-    const firebaseConfig = {
-        apiKey: "TU_API_KEY",
-        authDomain: "TU_PROYECTO.firebaseapp.com",
-        projectId: "TU_PROYECTO_ID",
-        storageBucket: "TU_PROYECTO.appspot.com",
-        messagingSenderId: "TU_ID",
-        appId: "TU_APP_ID"
-    };
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <strong>AUDICIVIL</strong> &copy; 2026 &mdash; Auditorio Ricardo Ramiro Santos Rodríguez<br>
+        Escuela Profesional de Ingeniería Civil · Universidad Nacional Mayor de San Marcos
+    </footer>
 
-    // Inicializar Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-
-    // Cambiar de pestaña
-    function showTab(tab) {
-        document.getElementById('tab-view').style.display = tab === 'view' ? 'block' : 'none';
-        document.getElementById('tab-add').style.display = tab === 'add' ? 'block' : 'none';
-        document.getElementById('btn-view').className = tab === 'view' ? 'active' : '';
-        document.getElementById('btn-add').className = tab === 'add' ? 'active' : '';
-        if(tab === 'view') loadEvents();
-    }
-
-    // Subir imagen y guardar datos
-    document.getElementById('event-form').onsubmit = async (e) => {
-        e.preventDefault();
-        const loader = document.getElementById('loading');
-        loader.style.display = 'block';
-
-        const file = document.getElementById('image-file').files[0];
-        const title = document.getElementById('title').value;
-        const date = document.getElementById('date').value;
-        const time = document.getElementById('time').value;
-        const extra = document.getElementById('extra').value;
-
-        try {
-            // 1. Subir imagen al Storage de Firebase
-            const storageRef = storage.ref(`eventos/${Date.now()}_${file.name}`);
-            await storageRef.put(file);
-            const imageUrl = await storageRef.getDownloadURL();
-
-            // 2. Guardar info en Firestore (Base de datos)
-            await db.collection("eventos").add({
-                title, date, time, extra, imageUrl,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            alert("¡Ya está en la cartelera, neto!");
-            document.getElementById('event-form').reset();
-            showTab('view');
-        } catch (error) {
-            console.error(error);
-            alert("Algo falló, revisa la consola.");
-        }
-        loader.style.display = 'none';
-    };
-
-    // Cargar eventos en tiempo real
-    function loadEvents() {
-        db.collection("eventos").orderBy("date", "asc").onSnapshot((snapshot) => {
-            const container = document.getElementById('lista-eventos');
-            container.innerHTML = '';
-            
-            snapshot.forEach((doc) => {
-                const ev = doc.data();
-                container.innerHTML += `
-                    <div class="movie-card">
-                        <img src="${ev.imageUrl}" alt="Evento">
-                        <div class="card-content">
-                            <h3>${ev.title}</h3>
-                            <div class="info-row"><b>FECHA:</b> ${ev.date}</div>
-                            <div class="info-row"><b>HORA:</b> ${ev.time}</div>
-                            <div class="info-row" style="color:white; margin-top:10px;">${ev.extra}</div>
-                        </div>
+    <!-- ==================== MODAL: AGREGAR EVENTO ==================== -->
+    <div class="modal-overlay" id="modalAgregar" style="display:none;">
+        <div class="modal">
+            <button class="modal-close" onclick="cerrarModalAgregar()">&times;</button>
+            <h3>🎬 Agregar Nuevo Evento</h3>
+            <form id="formEvento" onsubmit="guardarEvento(event)">
+                <div class="form-group">
+                    <label for="titulo">Título del Evento *</label>
+                    <input type="text" id="titulo" placeholder="Ej: Conferencia Magistral de Ingeniería Sísmica" required>
+                </div>
+                <div class="form-group">
+                    <label for="imagenArchivo">Imagen de Referencia (desde tu PC)</label>
+                    <input type="file" id="imagenArchivo" accept="image/*" onchange="previewImagenLocal()">
+                    <img id="imagePreview" class="image-preview" src="" alt="Vista previa">
+                    <small style="color:var(--text-muted); font-size:0.75rem;">Se subirá a ImgBB automáticamente</small>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fecha">Fecha *</label>
+                        <input type="date" id="fecha" required>
                     </div>
-                `;
+                    <div class="form-group">
+                        <label for="horario">Horario *</label>
+                        <input type="text" id="horario" placeholder="Ej: 10:00 AM - 12:00 PM" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="extra">Información Extra</label>
+                    <textarea id="extra" rows="3" placeholder="Descripción, ponentes, lugar dentro del auditorio, etc."></textarea>
+                </div>
+                <button type="submit" class="btn-submit" id="btnSubmit">
+                    💾 Guardar Evento
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: DETALLE DE EVENTO ==================== -->
+    <div class="modal-overlay" id="modalDetalle" style="display:none;">
+        <div class="modal">
+            <button class="modal-close" onclick="cerrarModalDetalle()">&times;</button>
+            <div class="detail-modal-content" id="detailContent">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TOAST CONTAINER ==================== -->
+    <div id="toastContainer"></div>
+
+    <script>
+        // ═══════════════════════════════════════════════
+        //  CONFIGURACIÓN – REEMPLAZA ESTOS VALORES
+        // ═══════════════════════════════════════════════
+        const IMGBB_API_KEY = '36dfe0461ab6fa19530066bfd3d87379';        // <- PON TU API KEY DE IMGBB
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7V1cb-V5411Ut97r5GQMqgKNbtWf8B8Hmaa7KF9b9JF_MaE6X3kIoKO-HV7nzSNe7/exec'; // <- PON LA URL DE TU WEB APP
+
+        // ═══════════════════════════════════════════════
+        //  FUNCIONES PARA EL API DE GOOGLE SHEETS
+        // ═══════════════════════════════════════════════
+        async function fetchEventos() {
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=read`);
+                if (!response.ok) throw new Error('Error de red');
+                const data = await response.json();
+                return Array.isArray(data) ? data : [];
+            } catch (error) {
+                console.error('Error al obtener eventos:', error);
+                mostrarToast('⚠️ No se pudieron cargar los eventos desde el servidor.', 'error');
+                return [];
+            }
+        }
+
+        async function createEventoEnServidor(evento) {
+            const response = await fetch(`${APPS_SCRIPT_URL}?action=create`, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(evento)
             });
+            if (!response.ok) throw new Error('Error al crear evento');
+            return await response.json();
+        }
+
+        async function deleteEventoEnServidor(id) {
+            const response = await fetch(`${APPS_SCRIPT_URL}?action=delete`, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            if (!response.ok) throw new Error('Error al eliminar evento');
+            return await response.json();
+        }
+
+        // ═══════════════════════════════════════════════
+        //  SUBIR IMAGEN A IMGBB
+        // ═══════════════════════════════════════════════
+        async function uploadToImgBB(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            const url = `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`;
+            const response = await fetch(url, { method: 'POST', body: formData });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error?.message || 'Error al subir imagen');
+            }
+            const data = await response.json();
+            return data.data.url; // URL de la imagen en ImgBB
+        }
+
+        // ═══════════════════════════════════════════════
+        //  VARIABLES GLOBALES Y FILTROS
+        // ═══════════════════════════════════════════════
+        let eventosCache = [];
+        let filtroActual = 'todos';
+
+        async function cargarEventos() {
+            eventosCache = await fetchEventos();
+            renderizarEventos();
+        }
+
+        function filtrarEventos(filtro) {
+            filtroActual = filtro;
+            // Actualizar pills y navegación
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+            const pillMap = { todos: 'pill-todos', hoy: 'pill-hoy', futuros: 'pill-futuros' };
+            const navMap = { todos: 'nav-todos', hoy: 'nav-hoy', futuros: 'nav-futuros' };
+            if (pillMap[filtro]) document.getElementById(pillMap[filtro]).classList.add('active');
+            if (navMap[filtro]) document.getElementById(navMap[filtro]).classList.add('active');
+
+            const titulos = { todos: 'Cartelera de Eventos', hoy: 'Eventos de Hoy', futuros: 'Próximos Eventos' };
+            document.getElementById('sectionTitle').textContent = titulos[filtro] || 'Cartelera de Eventos';
+
+            renderizarEventos();
+        }
+
+        function renderizarEventos() {
+            const grid = document.getElementById('eventGrid');
+            const hoy = new Date();
+            const fechaHoyStr = hoy.toISOString().split('T')[0];
+
+            let eventosFiltrados = eventosCache;
+            if (filtroActual === 'hoy') {
+                eventosFiltrados = eventosCache.filter(e => e.fecha === fechaHoyStr);
+            } else if (filtroActual === 'futuros') {
+                eventosFiltrados = eventosCache.filter(e => e.fecha >= fechaHoyStr);
+            }
+
+            // Ordenar por fecha (más cercanos primero)
+            eventosFiltrados.sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+            if (eventosFiltrados.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-state-icon">🎭</div>
+                        <p>No hay eventos ${filtroActual === 'hoy' ? 'para hoy' : filtroActual === 'futuros' ? 'próximos' : 'registrados'}</p>
+                        <span>¡Agrega uno nuevo usando el botón "Nuevo Evento"!</span>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = eventosFiltrados.map(e => {
+                const fechaObj = new Date(e.fecha + 'T00:00:00');
+                const opcionesFecha = { day: 'numeric', month: 'short', year: 'numeric' };
+                const fechaFormateada = fechaObj.toLocaleDateString('es-PE', opcionesFecha);
+                const esHoy = e.fecha === fechaHoyStr;
+                const esFuturo = e.fecha > fechaHoyStr;
+
+                let badgeTexto = fechaFormateada;
+                let badgeEmoji = '📅';
+                if (esHoy) { badgeTexto = 'HOY - ' + fechaFormateada; badgeEmoji = '🔴'; }
+                else if (esFuturo) { badgeEmoji = '✨'; }
+
+                const imagenHTML = e.imagen ?
+                    `<img src="${e.imagen}" alt="${e.titulo}" class="event-card-image" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` +
+                    `<div class="event-card-image-placeholder" style="display:none;">🎬</div>` :
+                    `<div class="event-card-image-placeholder">🎬</div>`;
+
+                return `
+                    <div class="event-card" onclick="verDetalle(${e.id})">
+                        ${imagenHTML}
+                        <div class="event-card-body">
+                            <span class="event-date-badge">${badgeEmoji} ${badgeTexto}</span>
+                            <h4 class="event-card-title">${escaparHTML(e.titulo)}</h4>
+                            <span class="event-card-time">🕐 ${escaparHTML(e.horario)}</span>
+                            ${e.extra ? `<p class="event-card-extra">${escaparHTML(e.extra)}</p>` : ''}
+                            <div class="event-card-actions" onclick="event.stopPropagation();">
+                                <button class="btn-sm btn-detail" onclick="verDetalle(${e.id})">ℹ️ Detalle</button>
+                                <button class="btn-sm btn-delete" onclick="eliminarEvento(${e.id})">🗑️ Eliminar</button>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function escaparHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ═══════════════════════════════════════════════
+        //  MODAL AGREGAR EVENTO (con subida de imagen)
+        // ═══════════════════════════════════════════════
+        function abrirModalAgregar() {
+            document.getElementById('modalAgregar').style.display = 'flex';
+            document.getElementById('formEvento').reset();
+            document.getElementById('imagePreview').classList.remove('visible');
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('titulo').focus();
+        }
+
+        function cerrarModalAgregar() {
+            document.getElementById('modalAgregar').style.display = 'none';
+        }
+
+        function previewImagenLocal() {
+            const file = document.getElementById('imagenArchivo').files[0];
+            const preview = document.getElementById('imagePreview');
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.classList.add('visible');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.classList.remove('visible');
+                preview.src = '';
+            }
+        }
+
+        async function guardarEvento(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmit');
+            const titulo = document.getElementById('titulo').value.trim();
+            const fecha = document.getElementById('fecha').value;
+            const horario = document.getElementById('horario').value.trim();
+            const extra = document.getElementById('extra').value.trim();
+            const archivo = document.getElementById('imagenArchivo').files[0];
+
+            if (!titulo || !fecha || !horario) {
+                mostrarToast('⚠️ Completa los campos obligatorios: título, fecha y horario.', 'error');
+                return;
+            }
+
+            // Deshabilitar botón y mostrar spinner
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Subiendo imagen...';
+
+            let imagenUrl = '';
+            try {
+                if (archivo) {
+                    // Subir a ImgBB
+                    imagenUrl = await uploadToImgBB(archivo);
+                    btn.innerHTML = '<span class="spinner"></span> Guardando evento...';
+                }
+
+                const nuevoEvento = {
+                    titulo,
+                    imagen: imagenUrl,
+                    fecha,
+                    horario,
+                    extra,
+                };
+
+                await createEventoEnServidor(nuevoEvento);
+                cerrarModalAgregar();
+                await cargarEventos(); // Recargar desde el servidor
+                if (filtroActual !== 'todos') filtrarEventos('todos');
+                else renderizarEventos();
+                mostrarToast('✅ Evento agregado exitosamente');
+            } catch (error) {
+                console.error(error);
+                mostrarToast('❌ Error: ' + (error.message || 'No se pudo guardar el evento.'), 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '💾 Guardar Evento';
+            }
+        }
+
+        // ═══════════════════════════════════════════════
+        //  MODAL DETALLE Y ELIMINAR
+        // ═══════════════════════════════════════════════
+        function verDetalle(id) {
+            const evento = eventosCache.find(e => e.id == id);
+            if (!evento) return;
+
+            const fechaObj = new Date(evento.fecha + 'T00:00:00');
+            const fechaFormateada = fechaObj.toLocaleDateString('es-PE', {
+                day: 'numeric', month: 'long', year: 'numeric', weekday: 'long'
+            });
+
+            const imagenHTML = evento.imagen ?
+                `<img src="${evento.imagen}" alt="${evento.titulo}" class="detail-image" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` +
+                `<div class="detail-image-placeholder" style="display:none;">🎬</div>` :
+                `<div class="detail-image-placeholder">🎬</div>`;
+
+            document.getElementById('detailContent').innerHTML = `
+                ${imagenHTML}
+                <h3 class="detail-title">${escaparHTML(evento.titulo)}</h3>
+                <div class="detail-meta">
+                    <span class="detail-meta-item">📅 ${fechaFormateada}</span>
+                    <span class="detail-meta-item">🕐 ${escaparHTML(evento.horario)}</span>
+                </div>
+                ${evento.extra ? `<p class="detail-extra">${escaparHTML(evento.extra)}</p>` : '<p class="detail-extra" style="color:#555;">Sin información adicional.</p>'}
+            `;
+            document.getElementById('modalDetalle').style.display = 'flex';
+        }
+
+        function cerrarModalDetalle() {
+            document.getElementById('modalDetalle').style.display = 'none';
+        }
+
+        async function eliminarEvento(id) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este evento? Esta acción no se puede deshacer.')) return;
+            try {
+                await deleteEventoEnServidor(id);
+                await cargarEventos();
+                mostrarToast('🗑️ Evento eliminado correctamente');
+            } catch (error) {
+                console.error(error);
+                mostrarToast('❌ No se pudo eliminar el evento.', 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════
+        //  TOAST Y CIERRES DE MODAL
+        // ═══════════════════════════════════════════════
+        function mostrarToast(mensaje, tipo = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast' + (tipo === 'error' ? ' error' : '');
+            toast.textContent = mensaje;
+            container.appendChild(toast);
+            setTimeout(() => {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 3000);
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                cerrarModalAgregar();
+                cerrarModalDetalle();
+            }
         });
-    }
+        document.getElementById('modalAgregar').addEventListener('click', function(e) {
+            if (e.target === this) cerrarModalAgregar();
+        });
+        document.getElementById('modalDetalle').addEventListener('click', function(e) {
+            if (e.target === this) cerrarModalDetalle();
+        });
 
-    // Carga inicial
-    loadEvents();
-</script>
+        // ═══════════════════════════════════════════════
+        //  INICIO
+        // ═══════════════════════════════════════════════
+        cargarEventos().then(() => filtrarEventos('todos'));
+    </script>
 </body>
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyCjHB1ikZFSTFnstyfzRMptK8XlzoEL_BI",
-    authDomain: "audicivil-6f87a.firebaseapp.com",
-    projectId: "audicivil-6f87a",
-    storageBucket: "audicivil-6f87a.firebasestorage.app",
-    messagingSenderId: "1061013908378",
-    appId: "1:1061013908378:web:8eab333ac591e1eed12823",
-    measurementId: "G-87VHJ5HGZ9"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
 </html>
