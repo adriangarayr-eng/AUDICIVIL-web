@@ -7,7 +7,7 @@
     
     <!--
     ═══════════════════════════════════════════════════════════════
-     INSTRUCCIONES DE CONFIGURACIÓN (LEER ANTES DE USAR)
+     INSTRUCCIONES DE CONFIGURACIÓN
     ═══════════════════════════════════════════════════════════════
      1. Reemplaza 'TU_IMGBB_API_KEY' con tu clave de API de ImgBB
         (consíguela gratis en https://api.imgbb.com/)
@@ -16,8 +16,8 @@
         "Cualquiera, incluso anónimo" y aceptar POST/GET).
      3. La Apps Script debe manejar los parámetros:
         ?action=read  -> GET  -> devuelve JSON con todos los eventos
-        ?action=create -> POST -> recibe JSON con {titulo,imagen,fecha,horario,extra}
-        ?action=delete -> POST -> recibe JSON con {id}
+        POST con action=create -> recibe parámetros: titulo, imagen, fecha, horario, extra
+        POST con action=delete -> recibe parámetros: id
         (Los eventos se guardan en una hoja de Google Sheets con
          columnas: id, titulo, imagen, fecha, horario, extra)
     ═══════════════════════════════════════════════════════════════
@@ -876,8 +876,8 @@
         // ═══════════════════════════════════════════════
         //  CONFIGURACIÓN – REEMPLAZA ESTOS VALORES
         // ═══════════════════════════════════════════════
-        const IMGBB_API_KEY = '36dfe0461ab6fa19530066bfd3d87379';        // <- PON TU API KEY DE IMGBB
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwcZ8F7H0TGhNk1pI_KwtJLwxEaIsrRw7EkICi_385AB8dq7pmSRMiZw3X2-t-3D8EY/exec'; // <- PON LA URL DE TU WEB APP
+        const IMGBB_API_KEY = '36dfe0461ab6fa19530066bfd3d87379';              // <- PON TU API KEY DE IMGBB
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyUkIjQLNHBH5bfTyYTRI6drPsdxhoPwSQqnK1BmgBqhR7fD5if6EVEJL6H8N5GrItt/exec';   // <- PON LA URL DE TU WEB APP
 
         // ═══════════════════════════════════════════════
         //  FUNCIONES PARA EL API DE GOOGLE SHEETS
@@ -895,23 +895,37 @@
             }
         }
 
+        // Envía los datos como formulario (evita preflight CORS)
         async function createEventoEnServidor(evento) {
-            const response = await fetch(`${APPS_SCRIPT_URL}?action=create`, {
+            const formData = new URLSearchParams();
+            formData.append('action', 'create');
+            formData.append('titulo', evento.titulo);
+            formData.append('imagen', evento.imagen || '');
+            formData.append('fecha', evento.fecha);
+            formData.append('horario', evento.horario);
+            formData.append('extra', evento.extra || '');
+            
+            const response = await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
                 mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(evento)
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
             });
             if (!response.ok) throw new Error('Error al crear evento');
             return await response.json();
         }
 
+        // Envía la eliminación como formulario
         async function deleteEventoEnServidor(id) {
-            const response = await fetch(`${APPS_SCRIPT_URL}?action=delete`, {
+            const formData = new URLSearchParams();
+            formData.append('action', 'delete');
+            formData.append('id', id.toString());
+            
+            const response = await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
                 mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
             });
             if (!response.ok) throw new Error('Error al eliminar evento');
             return await response.json();
@@ -930,7 +944,7 @@
                 throw new Error(errorData?.error?.message || 'Error al subir imagen');
             }
             const data = await response.json();
-            return data.data.url; // URL de la imagen en ImgBB
+            return data.data.url;
         }
 
         // ═══════════════════════════════════════════════
@@ -946,7 +960,6 @@
 
         function filtrarEventos(filtro) {
             filtroActual = filtro;
-            // Actualizar pills y navegación
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
             const pillMap = { todos: 'pill-todos', hoy: 'pill-hoy', futuros: 'pill-futuros' };
@@ -972,7 +985,6 @@
                 eventosFiltrados = eventosCache.filter(e => e.fecha >= fechaHoyStr);
             }
 
-            // Ordenar por fecha (más cercanos primero)
             eventosFiltrados.sort((a, b) => a.fecha.localeCompare(b.fecha));
 
             if (eventosFiltrados.length === 0) {
@@ -1026,7 +1038,7 @@
         }
 
         // ═══════════════════════════════════════════════
-        //  MODAL AGREGAR EVENTO (con subida de imagen)
+        //  MODAL AGREGAR EVENTO
         // ═══════════════════════════════════════════════
         function abrirModalAgregar() {
             document.getElementById('modalAgregar').style.display = 'flex';
@@ -1070,29 +1082,20 @@
                 return;
             }
 
-            // Deshabilitar botón y mostrar spinner
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Subiendo imagen...';
+            btn.innerHTML = '<span class="spinner"></span> Subiendo...';
 
             let imagenUrl = '';
             try {
                 if (archivo) {
-                    // Subir a ImgBB
                     imagenUrl = await uploadToImgBB(archivo);
                     btn.innerHTML = '<span class="spinner"></span> Guardando evento...';
                 }
 
-                const nuevoEvento = {
-                    titulo,
-                    imagen: imagenUrl,
-                    fecha,
-                    horario,
-                    extra,
-                };
-
+                const nuevoEvento = { titulo, imagen: imagenUrl, fecha, horario, extra };
                 await createEventoEnServidor(nuevoEvento);
                 cerrarModalAgregar();
-                await cargarEventos(); // Recargar desde el servidor
+                await cargarEventos();
                 if (filtroActual !== 'todos') filtrarEventos('todos');
                 else renderizarEventos();
                 mostrarToast('✅ Evento agregado exitosamente');
