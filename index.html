@@ -1099,8 +1099,8 @@
             // ========== CONFIGURACIÓN ==========
             // ⚠️ REEMPLAZA estos valores con los tuyos:
             const CONFIG = {
-                IMGBB_API_KEY: 'TU_API_KEY_IMGBB', // Obténla en: https://api.imgbb.com/
-                GOOGLE_SCRIPT_URL: 'TU_URL_GOOGLE_APPS_SCRIPT', // URL de la Web App de Google Apps Script
+                IMGBB_API_KEY: '36dfe0461ab6fa19530066bfd3d87379', // Obténla en: https://api.imgbb.com/
+                GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzRaDEPTFOcV1TcKgHeZzrRTVrjGKBIuTub2HcHVQqZHw1FJlD_K7Kv4WNJBPmSA7bT/exec', // URL de la Web App de Google Apps Script
             };
 
             // ========== ELEMENTOS DOM ==========
@@ -1280,7 +1280,7 @@
 
             // ========== SUBIDA A IMGBB ==========
             async function uploadToImgbb(file) {
-                const apiKey = 36dfe0461ab6fa19530066bfd3d87379;
+                const apiKey = CONFIG.IMGBB_API_KEY;
                 if (!apiKey || apiKey === 'TU_API_KEY_IMGBB') {
                     throw new Error('API key de imgbb no configurada. Configúrala en la variable CONFIG.IMGBB_API_KEY');
                 }
@@ -1313,7 +1313,7 @@
 
             // ========== GOOGLE APPS SCRIPT - BACKEND ==========
             async function fetchEvents() {
-                const url = https://script.google.com/macros/s/AKfycbzRaDEPTFOcV1TcKgHeZzrRTVrjGKBIuTub2HcHVQqZHw1FJlD_K7Kv4WNJBPmSA7bT/exec;
+                const url = CONFIG.GOOGLE_SCRIPT_URL;
                 if (!url || url === 'TU_URL_GOOGLE_APPS_SCRIPT') {
                     // Modo demo: usar localStorage
                     return getLocalEvents();
